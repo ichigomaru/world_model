@@ -1,0 +1,41 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "observation.image": {
+      "shape": [
+        3,
+        240,
+        320
+      ],
+      "dtype": "uint8",
+      "_type": "Array3D"
+    },
+    "observation.state": {
+      "feature": {
+        "dtype": "float32",
+        "_type": "Value"
+      },
+      "length": 6,
+      "_type": "Sequence"
+    },
+    "action": {
+      "feature": {
+        "dtype": "float32",
+        "_type": "Value"
+      },
+      "length": 6,
+      "_type": "Sequence"
+    },
+    "episode_index": {
+      "dtype": "int32",
+      "_type": "Value"
+    },
+    "frame_index": {
+      "dtype": "int32",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}
