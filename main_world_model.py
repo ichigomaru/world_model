@@ -10,7 +10,7 @@ from box import Box
 from datasets import load_from_disk
 from safetensors.torch import load_file
 
-from src.model.vision import VisionEncoder
+from src.model.world_model.encoder import VisionEncoder
 from src.model.world_model.RSSM import RSSM
 from src.model.world_model.decoder import VisionDecoder
 from src.model.world_model.WorldModel import WorldModel

@@ -9,12 +9,6 @@ resolution-markers = [
     "sys_platform == 'emscripten'",
 ]
 
-[manifest]
-members = [
-    "factr",
-    "kensyuu-3",
-]
-
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
@@ -495,11 +489,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/ca/e4/efb182548f9931b36
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/64/59e024b685666514cb20ffc2463a8b062df8e6c36efc5199cb422b728b78/executing-0.8.2-py2.py3-none-any.whl", hash = "sha256:32fc6077b103bd19e6494a72682d66d5763cf20a106d5aa7c5ccbea4e47b0df7", size = 16263 },
 ]
-
-[[package]]
-name = "factr"
-version = "0.1.0"
-source = { virtual = "FACTR" }
 
 [[package]]
 name = "farama-notifications"
