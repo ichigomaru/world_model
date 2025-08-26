@@ -1,0 +1,29 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+**/.DS_Store
+**/__pycache__/*
+wandb/
+
+# Virtual environments
+.venv
+data_01/
+data_02/
+_data/
+data/
+data_merged/
+data_merged.tar.gz
+data_part_aa
+lerobot/
+result_RNN/
+sim_result/
+result/
+
+!result/dim_8/model/
+result/dim_8/model/*.safetensors
+
+.DS_Store
