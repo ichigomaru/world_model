@@ -7,41 +7,40 @@ import torch.nn.functional as F
 from torch.distributions import kl_divergence, Normal, Independent
 import wandb
 from safetensors.torch import save_file
+from ..trainer.loss import world_model_loss, LossParameters
 
 class Trainer:
-    def __init__(self, model, train_loader, val_loader, optimizer, epoch, device, kl_loss_scale, save_path):
+    def __init__(self, model, train_loader, val_loader, optimizer, epoch, device, save_path):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.epochs = epoch
         self.device = device
-        self.kl_loss_scale = kl_loss_scale
         self.save_path = save_path
         self.best_val_loss = float('inf')
         os.makedirs(self.save_path, exist_ok=True)
 
     def _calculate_loss(self, images, actions):
-
+        # 1. モデルから出力を得る
         recon_images, _, _, priors, posteriors = self.model(images, actions)
         
-        loss_reconstruction = F.mse_loss(recon_images, images)
-        
-        kl_loss = 0
-        for prior_dist, posterior_dist in zip(priors, posteriors):
-            kl_loss += kl_divergence(
-                Independent(posterior_dist, 1), Independent(prior_dist, 1)
-            ).mean()
-        
-        kl_loss /= len(priors)
-        
-        total_loss = loss_reconstruction + kl_loss
+        # 2. 損失計算用のパラメータを準備する
+        #    'Normal'オブジェクトはイテラブルではないため、ループ処理は不要
+        loss_params = LossParameters(
+            origin_image=images,
+            recon_image=recon_images,
+            # Followerを使わない場合は、ダミーデータとしてゼロテンソルを渡す
+            prior_dist=priors,      # ★変更点: そのまま渡す
+            posterior_dist=posteriors, # ★変更点: そのまま渡す
+            kl_balance=0.8,  # ハイパーパラメータ (0.0 ~ 1.0)
+            kl_beta=1.0,     # ハイパーパラメータ
+        )
 
-        return {
-            "total_loss": total_loss,
-            "reconstruction_loss": loss_reconstruction,
-            "kl_loss": kl_loss
-        }
+        # 3. 外部の損失関数を呼び出す
+        losses = world_model_loss(loss_params)
+        
+        return losses
 
     def _run_epoch(self, data_loader, is_training):
 

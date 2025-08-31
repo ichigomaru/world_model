@@ -74,15 +74,28 @@ class RSSM(nn.Module):
             # 結果を保存
             det_states.append(deterministic_state)
             stoch_states.append(stochastic_state)
-            priors.append(prior_dist)
-            posteriors.append(posterior_dist)
+            priors.append(prior_dist)       # ここではまだリストに分布オブジェクトを追加
+            posteriors.append(posterior_dist) # ここではまだリストに分布オブジェクトを追加
 
-        # 結果をテンソルとしてまとめる
+        # --- ここからが変更点 ---
+        # ループが終わった後、リスト内の分布からmeanとscaleをそれぞれ取り出してスタックする
+        
+        # Priorsを1つの大きな分布にまとめる
+        prior_means = torch.stack([dist.mean for dist in priors], dim=1)
+        prior_stds = torch.stack([dist.scale for dist in priors], dim=1)
+        priors_dist = Normal(prior_means, prior_stds)
+
+        # Posteriorsを1つの大きな分布にまとめる
+        posterior_means = torch.stack([dist.mean for dist in posteriors], dim=1)
+        posterior_stds = torch.stack([dist.scale for dist in posteriors], dim=1)
+        posteriors_dist = Normal(posterior_means, posterior_stds)
+
+        # 結果をテンソルと、1つの大きな分布オブジェクトとして返す
         return (
             torch.stack(det_states, dim=1),
             torch.stack(stoch_states, dim=1),
-            priors, # KL損失計算用に分布のリストを返す
-            posteriors
+            priors_dist,     # 変更点：リストではなく、1つの分布オブジェクトを返す
+            posteriors_dist  # 変更点：リストではなく、1つの分布オブジェクトを返す
         )
 
     def dream(self, initial_deterministic, initial_stochastic, action_sequence):

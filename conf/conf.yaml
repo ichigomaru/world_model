@@ -1,6 +1,6 @@
 model:
   vision:
-    channels: [8, 16, 32]
+    channels: [32, 64, 128]
     kernels: [6, 6, 6]
     strides: [3, 3, 3]
     paddings: [3, 3, 3]
@@ -12,7 +12,7 @@ model:
   policy:
     hidden_dim: 256 #RNNの隠れ層の次元
   
-  latent_obs_dim: 250 #潜在変数の次元(obs=観測情報)
+  latent_obs_dim: 512 #潜在変数の次元(obs=観測情報)
 
 
 data:
@@ -33,7 +33,7 @@ logging:
 
 wandb:
   project_name: 'Kensyu_3_new'
-  train_name: 'World_Model_1'
+  train_name: 'World_Model_3'
   config:
     device: 'cuda:0'
 
@@ -43,20 +43,20 @@ run:
 
 parameters:
   dreamer:
-    stochastic_size: 30 #stochastic:確率論的
-    deterministic_size: 200 #deterministic:決定論的
-    embedded_state_size: 250 #埋め込み状態の次元 エンコーダの出力次元に合わせる
+    stochastic_size: 256 #stochastic:確率論的
+    deterministic_size: 256 #deterministic:決定論的
+    embedded_state_size: 512 #埋め込み状態の次元 エンコーダの出力次元に合わせる
     rssm:
       recurrent_model:
-        hidden_size: 200
+        hidden_size: 256
         activation: "ELU"
       transition_model:
-        hidden_size: 200
+        hidden_size: 256
         num_layers: 2
         activation: "ELU"
         min_std: 0.1
       representation_model:
-        hidden_size: 200
+        hidden_size: 256
         num_layers: 2
         activation: "ELU"
         min_std: 0.1 

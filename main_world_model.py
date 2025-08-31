@@ -99,7 +99,7 @@ decoder = VisionDecoder(
     kernels=cfg.model.vision.kernels,
     strides=cfg.model.vision.strides,
     paddings=cfg.model.vision.paddings,
-    latent_obs_dim=cfg.parameters.dreamer.stochastic_size, # RSSMの確率的状態の次元
+    latent_obs_dim=cfg.parameters.dreamer.deterministic_size + cfg.parameters.dreamer.stochastic_size, # RSSMの確率的状態の次元
     mlp_hidden_dim=cfg.model.mlp.mlp_hidden_dim,
     n_mlp_layers=cfg.model.mlp.n_mlp_layers,
 ).to(device)
@@ -114,7 +114,6 @@ trainer = Trainer(
     optimizer=optimizer,
     epoch=cfg.train.epoch,
     device=device,
-    kl_loss_scale=cfg.train.kl_loss_scale,
     save_path=f"result/{cfg.wandb.train_name}/model",
 )
 
