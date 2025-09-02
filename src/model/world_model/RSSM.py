@@ -46,7 +46,6 @@ class RSSM(nn.Module):
 
         batch_size, seq_len, _ = embedded_obs.shape
         
-        # 内部でループを回してシーケンスを処理
         deterministic_state, stochastic_state = self.initial_state(batch_size)
         
         det_states, stoch_states, priors, posteriors = [], [], [], []
@@ -71,21 +70,15 @@ class RSSM(nn.Module):
             # 4. 事後分布から次の確率的状態をサンプリング
             stochastic_state = posterior_dist.rsample()
             
-            # 結果を保存
             det_states.append(deterministic_state)
             stoch_states.append(stochastic_state)
-            priors.append(prior_dist)       # ここではまだリストに分布オブジェクトを追加
-            posteriors.append(posterior_dist) # ここではまだリストに分布オブジェクトを追加
-
-        # --- ここからが変更点 ---
-        # ループが終わった後、リスト内の分布からmeanとscaleをそれぞれ取り出してスタックする
+            priors.append(prior_dist)       
+            posteriors.append(posterior_dist) 
         
-        # Priorsを1つの大きな分布にまとめる
         prior_means = torch.stack([dist.mean for dist in priors], dim=1)
         prior_stds = torch.stack([dist.scale for dist in priors], dim=1)
         priors_dist = Normal(prior_means, prior_stds)
 
-        # Posteriorsを1つの大きな分布にまとめる
         posterior_means = torch.stack([dist.mean for dist in posteriors], dim=1)
         posterior_stds = torch.stack([dist.scale for dist in posteriors], dim=1)
         posteriors_dist = Normal(posterior_means, posterior_stds)
@@ -94,8 +87,8 @@ class RSSM(nn.Module):
         return (
             torch.stack(det_states, dim=1),
             torch.stack(stoch_states, dim=1),
-            priors_dist,     # 変更点：リストではなく、1つの分布オブジェクトを返す
-            posteriors_dist  # 変更点：リストではなく、1つの分布オブジェクトを返す
+            priors_dist,     
+            posteriors_dist  
         )
 
     def dream(self, initial_deterministic, initial_stochastic, action_sequence):
@@ -106,13 +99,11 @@ class RSSM(nn.Module):
         imagined_stoch_states = []
         
         for t in range(action_sequence.size(1)):
-            # 1. 決定的状態を更新
             deterministic_state = self.recurrent_model(
                 torch.cat([stochastic_state, action_sequence[:, t]], dim=-1),
                 deterministic_state
             )
             
-            # 2. 事前分布 (Prior) から次の状態を想像
             prior_params = self.transition_model(deterministic_state)
             prior_dist = create_normal_dist(prior_params, min_std=self.rssm_config.transition_model.min_std)
             stochastic_state = prior_dist.rsample()
@@ -121,7 +112,6 @@ class RSSM(nn.Module):
             
         return torch.stack(imagined_stoch_states, dim=1)
 
-#ヘルパー関数
 def horizontal_forward(network, x, y=None, input_shape=(-1,), output_shape=(-1,)):
     batch_with_horizon_shape = x.shape[: -len(input_shape)]
     if not batch_with_horizon_shape:

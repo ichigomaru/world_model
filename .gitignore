@@ -11,9 +11,6 @@ wandb/
 
 # Virtual environments
 .venv
-data_01/
-data_02/
-_data/
 data/
 data_merged/
 data_merged.tar.gz
@@ -22,6 +19,7 @@ lerobot/
 result_RNN/
 sim_result/
 result/
+
 
 !result/dim_8/model/
 result/dim_8/model/*.safetensors

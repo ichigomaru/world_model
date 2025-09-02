@@ -33,7 +33,7 @@ torch.manual_seed(seed)
 
 os.chdir(
     os.path.dirname(os.path.abspath(__file__))
-)  # ch = change このスクリプトと同じディレクトリをカレントディレクトリにする __file__はこのスクリプトのパスを取得する つまりkensyu_3に移動
+)  
 os.makedirs("output", exist_ok=True)
 
 with open("conf/conf.yaml", "r") as yml:
@@ -45,15 +45,12 @@ wandb.init(project=cfg.wandb.project_name, config=cfg.wandb.config, name=cfg.wan
 
 data = load_from_disk("data_merged")
 
-# カラムごとに NumPy 配列として取り出す
 images = np.stack(data["observation.image"])  # shape: (N, 3, 240, 320)
 joint = np.stack(data["observation.state"])  # shape: (N, 6)
 action = np.stack(data["action"])  # shape: (N, 6)
 
-# action_is_pad をすべて False に初期化（N行の False ブール配列）
 action_is_pad = np.zeros((action.shape[0],), dtype=bool)
 
-# Dataset クラスに渡す
 dataset = MyDataset(
     action=action,
     images=images,
@@ -61,15 +58,11 @@ dataset = MyDataset(
     sequence_length=cfg.data.sequence_length
 )
 
-
 dataloader = MyDataloader(dataset, cfg.data.split_ratio, cfg.data.batch_size, cfg.data.seed)
 
 
 train_loader, val_loader, test_loader = dataloader.prepare_data()
-# print(f"[DEBUG] train_dataset のサンプル数: {len(dataset)}")
-# print(f"[DEBUG] train_loader のバッチ数: {len(train_loader)}")
 
-# CNNで特徴量抽出
 vision = VisionEncoder(
     channels=cfg.model.vision.channels,
     kernels=cfg.model.vision.kernels,
@@ -119,16 +112,13 @@ trainer = Trainer(
 
 trainer.train()  # トレーニングを開始
 
-# print_model_structure(vision)
 print_model_structure(world_model)
 
 best_epoch_path = os.path.join(f"result/{cfg.wandb.train_name}/model", 'best_epoch.yaml')
 
-# 新しいフォルダを作成
 best_epoch_folder = os.path.dirname(best_epoch_path)
 os.makedirs(best_epoch_folder, exist_ok=True)
 
-# 既存のエポックデータを読み込む
 if os.path.exists(best_epoch_path):
     with open(best_epoch_path, "r") as f:
         best_epoch_data = yaml.safe_load(f)
@@ -136,7 +126,6 @@ if os.path.exists(best_epoch_path):
 
     best_model_path = os.path.join(f"result/{cfg.wandb.train_name}/model", "world_model_best.safetensors")
 
-    # モデルの重みを読み込み
     best_model_weights = load_file(best_model_path)
     world_model.load_state_dict(best_model_weights)
 

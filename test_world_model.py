@@ -134,7 +134,7 @@ def main():
     images = (images / 127.5) - 1.0
 
     start_index = 40
-    sequence_length = 50 # 生成する動画の全長
+    sequence_length = 49 # 生成する動画の全長
     
     # 比較用の本物の画像シーケンス
     image_sequence = images[start_index : start_index + sequence_length]

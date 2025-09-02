@@ -1,16 +1,3 @@
-#Vision Network : CNN
-#World Modelにも使える
-"""
-    RGB画像を入力として受け取り、潜在変数に変換する。
-
-    Args:
-        x (torch.Tensor): (B, 3, 240, 320) の形状を持つRGB画像のテンソル
-                        Bはバッチサイズ。
-
-    Returns:
-        torch.Tensor: (B, 250) の形状を持つ潜在変数のテンソル。
-"""
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -68,7 +55,7 @@ class VisionEncoder(nn.Module):
 
         self.fc = _build_mlp(
             conved_size,
-            latent_obs_dim, #
+            latent_obs_dim, 
             mlp_hidden_dim,
             n_mlp_layers,
         )
