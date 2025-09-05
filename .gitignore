@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+**/.DS_Store
+**/__pycache__/*
+wandb/
+
+# Virtual environments
+.venv
+data_merged/
+data/
+lerobot/
+result/
+output/
+data_merged.tar.gz
+data_part_aa
+
+
+.DS_Store

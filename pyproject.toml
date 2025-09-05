@@ -1,0 +1,24 @@
+[project]
+name = "kensyuu-3"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = "==3.10.6"
+dependencies = [
+    "albumentations>=2.0.7",
+    "blosc2>=3.5.1",
+    "box>=0.1.5",
+    "draccus>=0.11.5",
+    "huggingface-hub>=0.24.7",
+    "jsonlines>=4.0.0",
+    "lerobot-utils",
+    "python-box>=7.3.2",
+    "scikit-learn>=1.6.1",
+    "gymnasium>=1.0.0",
+]
+
+[tool.uv.workspace]
+members = ["project-name"]
+
+[tool.uv.sources]
+lerobot-utils = { git = "https://github.com/keio-crl/lerobot-utils.git" }
