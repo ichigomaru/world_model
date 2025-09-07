@@ -2,7 +2,7 @@ uv run -m lerobot_utils.record \
     --seq_len 50 \
     --height 480 --width 640 \
     --rate 5 \
-    --name left \
+    --name right \
     --warmup 3 \
     --camera-indices 0 \
     --leader-port /dev/tty.usbmodem57640257221\
