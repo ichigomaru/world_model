@@ -1,5 +1,6 @@
 import os
 import yaml
+import blosc2
 from box import Box
 import numpy as np
 import torch
@@ -8,7 +9,7 @@ from safetensors.torch import load_file
 from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
-from src.model.vision import VisionEncoder
+from src.model.world_model.encoder import VisionEncoder
 from src.model.world_model.RSSM import RSSM
 from src.model.world_model.decoder import VisionDecoder
 from src.model.world_model.WorldModel import WorldModel
@@ -21,7 +22,22 @@ def tensor_to_pil(tensor):
     return Image.fromarray(img_np)
 
 def create_comparison_frame(original_img, predicted_img, timestep):
-    img_width, img_height = original_img.size
+    # ★変更点: 画像を何倍に拡大するか設定 (例: 4倍)
+    SCALE_FACTOR = 4
+
+    # ★変更点: 元の画像を拡大する
+    # Image.Resampling.NEAREST は、ドット絵のようにくっきりと拡大する指定
+    large_original_img = original_img.resize(
+        (original_img.width * SCALE_FACTOR, original_img.height * SCALE_FACTOR),
+        Image.Resampling.NEAREST
+    )
+    large_predicted_img = predicted_img.resize(
+        (predicted_img.width * SCALE_FACTOR, predicted_img.height * SCALE_FACTOR),
+        Image.Resampling.NEAREST
+    )
+
+    # ★変更点: 拡大後の画像サイズを基準にキャンバスを作成
+    img_width, img_height = large_original_img.size
     
     # --- レイアウト設定 ---
     margin = 20
@@ -40,19 +56,30 @@ def create_comparison_frame(original_img, predicted_img, timestep):
     canvas = Image.new('RGB', (canvas_width, canvas_height), 'white')
     draw = ImageDraw.Draw(canvas)
 
-    canvas.paste(original_img, (margin, top_margin))
-    canvas.paste(predicted_img, (img_width + margin * 2, top_margin))
+    # ★変更点: 拡大後の画像をキャンバスに配置
+    canvas.paste(large_original_img, (margin, top_margin))
+    canvas.paste(large_predicted_img, (img_width + margin * 2, top_margin))
 
     timestep_text = f"Timestep: {timestep}"
-    text_width = draw.textlength(timestep_text, font=font)
+    # Pillow 9.2.0以降では textlength は非推奨のため getlength を使用
+    try:
+        text_width = draw.textlength(timestep_text, font=font)
+    except AttributeError:
+        text_width = draw.getlength(timestep_text, font=font)
     draw.text(((canvas_width - text_width) / 2, 15), timestep_text, fill="black", font=font)
 
     original_text = "Original"
-    text_width = draw.textlength(original_text, font=label_font)
+    try:
+        text_width = draw.textlength(original_text, font=label_font)
+    except AttributeError:
+        text_width = draw.getlength(original_text, font=label_font)
     draw.text((margin + (img_width - text_width) / 2, top_margin + img_height + 5), original_text, fill="black", font=label_font)
 
     prediction_text = "Prediction"
-    text_width = draw.textlength(prediction_text, font=label_font)
+    try:
+        text_width = draw.textlength(prediction_text, font=label_font)
+    except AttributeError:
+        text_width = draw.getlength(prediction_text, font=label_font)
     draw.text((img_width + margin * 2 + (img_width - text_width) / 2, top_margin + img_height + 5), prediction_text, fill="black", font=label_font)
 
     return canvas
@@ -64,30 +91,42 @@ def imagine_future(model, image_sequence, action_sequence):
     comparison_frames = []
     
     with torch.no_grad():
-        first_image = image_sequence[0]
-        initial_obs_seq = first_image.unsqueeze(0).unsqueeze(0).to(device)
-        dummy_action_seq = torch.zeros(1, 1, action_sequence.shape[1]).to(device)
+        # 1. 最初の1フレームから、未来予測の起点となる状態(h, z)を取得する
+        first_frame = image_sequence[0]
+        initial_obs_seq = first_frame.unsqueeze(0).unsqueeze(0).to(device)
+        action_size = action_sequence.shape[-1]
+        dummy_action_seq = torch.zeros(1, 1, action_size).to(device)
         
         _, deterministic_states, stochastic_states, _, _ = model(initial_obs_seq, dummy_action_seq)
         
         initial_deterministic = deterministic_states.squeeze(1)
         initial_stochastic = stochastic_states.squeeze(1)
-        
+
+        # 2. 未来の行動シーケンスを準備する
         print("Dreaming future states...")
         action_sequence_dev = action_sequence.unsqueeze(0).to(device)
-        imagined_stoch_states = model.rssm.dream(initial_deterministic, initial_stochastic, action_sequence_dev)
-        
-        print("Decoding and creating comparison frames...")
-        b, t, s = imagined_stoch_states.shape
-        imagined_images_tensor = model.vision_decoder(imagined_stoch_states.reshape(b * t, s))
-        imagined_images_tensor = imagined_images_tensor.reshape(b, t, 3, 240, 320).squeeze(0)
 
+        # 3. dreamメソッドを「1回だけ」呼び出し、未来の状態(h, z)を想像させる
+        imagined_det_states, imagined_stoch_states = model.rssm.dream(
+            initial_deterministic, 
+            initial_stochastic, 
+            action_sequence_dev
+        )
+        
+        # 4. 想像した未来の状態(h+z)から、未来の画像を復元する
+        print("Decoding and creating comparison frames...")
+        latent_states_for_decoder = torch.cat([imagined_det_states, imagined_stoch_states], dim=-1)
+        b, t, s = latent_states_for_decoder.shape
+        imagined_images_tensor = model.vision_decoder(latent_states_for_decoder.reshape(b * t, s))
+        imagined_images_tensor = imagined_images_tensor.reshape(b, t, 3, 48, 64).squeeze(0)
+
+        # 5. GIFを作成する (この部分は変更なし)
         # 最初のフレーム
         original_pil = tensor_to_pil(image_sequence[0])
         comparison_frames.append(create_comparison_frame(original_pil, original_pil, 0))
 
         # 2フレーム目以降
-        for i in tqdm(range(t)):
+        for i in tqdm(range(t - 1)):
             original_pil = tensor_to_pil(image_sequence[i + 1])
             predicted_pil = tensor_to_pil(imagined_images_tensor[i])
             frame = create_comparison_frame(original_pil, predicted_pil, i + 1)
@@ -103,16 +142,22 @@ def main():
         cfg = Box(yaml.safe_load(yml))
 
     encoder = VisionEncoder(
-        channels=cfg.model.vision.channels, kernels=cfg.model.vision.kernels,
-        strides=cfg.model.vision.strides, paddings=cfg.model.vision.paddings,
-        latent_obs_dim=cfg.model.latent_obs_dim, mlp_hidden_dim=cfg.model.mlp.mlp_hidden_dim,
+        channels=cfg.model.vision.channels, 
+        kernels=cfg.model.vision.kernels,
+        strides=cfg.model.vision.strides, 
+        paddings=cfg.model.vision.paddings,
+        latent_obs_dim=cfg.model.latent_obs_dim,
+        mlp_hidden_dim=cfg.model.mlp.mlp_hidden_dim,
         n_mlp_layers=cfg.model.mlp.n_mlp_layers
     )
     rssm = RSSM(action_size=6, config=cfg)
     decoder = VisionDecoder(
-        channels=cfg.model.vision.channels, kernels=cfg.model.vision.kernels,
-        strides=cfg.model.vision.strides, paddings=cfg.model.vision.paddings,
-        latent_obs_dim=cfg.parameters.dreamer.stochastic_size, mlp_hidden_dim=cfg.model.mlp.mlp_hidden_dim,
+        channels=cfg.model.vision.channels, 
+        kernels=cfg.model.vision.kernels,
+        strides=cfg.model.vision.strides, 
+        paddings=cfg.model.vision.paddings,
+        latent_obs_dim=cfg.parameters.dreamer.deterministic_size + cfg.parameters.dreamer.stochastic_size, 
+        mlp_hidden_dim=cfg.model.mlp.mlp_hidden_dim,
         n_mlp_layers=cfg.model.mlp.n_mlp_layers
     )
     world_model = WorldModel(encoder, rssm, decoder).to(device)
@@ -127,25 +172,26 @@ def main():
     world_model.load_state_dict(state_dict)
     world_model.to(device)
 
-    data = load_from_disk("data_merged")
-    images = torch.from_numpy(np.stack(data["observation.image"])).float()
-    actions = torch.from_numpy(np.stack(data["action"])).float()
+    data_dir = "data_merged1" # ★あなたのマージ済みデータフォルダを指定
+    print(f"Loading preprocessed data from {data_dir}")
+    images_np = blosc2.load_array(os.path.join(data_dir, "images.blosc2"))
+    actions_np = blosc2.load_array(os.path.join(data_dir, "actions.blosc2"))
+
+    images = torch.from_numpy(images_np).float()
+    actions = torch.from_numpy(actions_np).float()
     
     images = (images / 127.5) - 1.0
 
-    start_index = 40
-    sequence_length = 49 # 生成する動画の全長
-    
-    # 比較用の本物の画像シーケンス
-    image_sequence = images[start_index : start_index + sequence_length]
-    # 未来予測に使う行動の脚本
-    action_sequence = actions[start_index + 1 : start_index + sequence_length]
+    episode_index = 1
+
+    image_sequence = images[episode_index]
+    action_sequence = actions[episode_index]
 
     comparison_frames = imagine_future(world_model, image_sequence, action_sequence)
 
     output_dir = f"output/{cfg.wandb.train_name}_imagined"
     os.makedirs(output_dir, exist_ok=True)
-    gif_path = os.path.join(output_dir, f"imagined_future_start_{start_index}.gif")
+    gif_path = os.path.join(output_dir, f"imagined_future_start_{episode_index}.gif")
     print(f"Saving comparison GIF to {gif_path}")
     
     comparison_frames[0].save(

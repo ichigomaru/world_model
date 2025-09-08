@@ -52,7 +52,7 @@ class VisionDecoder(nn.Module):
         super().__init__()
         
         self.encoder_feature_sizes = get_encoder_feature_sizes(
-            [240, 320], channels, kernels, strides, paddings
+            [48, 64], channels, kernels, strides, paddings
         )
         
         final_h, final_w = self.encoder_feature_sizes[-1]

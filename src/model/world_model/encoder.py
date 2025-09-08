@@ -42,7 +42,7 @@ class VisionEncoder(nn.Module):
         super().__init__()
 
         #画像サイズ
-        obs_size = [240, 320]
+        obs_size = [48, 64]
 
         #エンコーダー
         self.encoder = self._build_conv_layers(

@@ -1,5 +1,6 @@
 import os
 import random
+import blosc2
 
 import numpy as np
 import torch
@@ -43,11 +44,11 @@ os.makedirs(f"result/{cfg.wandb.train_name}", exist_ok=True)
 wandb.init(project=cfg.wandb.project_name, config=cfg.wandb.config, name=cfg.wandb.train_name)
 
 
-data = load_from_disk("data_merged")
+data_dir = "data_merged1"
 
-images = np.stack(data["observation.image"])  # shape: (N, 3, 240, 320)
-joint = np.stack(data["observation.state"])  # shape: (N, 6)
-action = np.stack(data["action"])  # shape: (N, 6)
+images = blosc2.load_array(os.path.join(data_dir, "images.blosc2"))
+joint = blosc2.load_array(os.path.join(data_dir, "states.blosc2"))
+action = blosc2.load_array(os.path.join(data_dir, "actions.blosc2"))
 
 action_is_pad = np.zeros((action.shape[0],), dtype=bool)
 
@@ -63,7 +64,7 @@ dataloader = MyDataloader(dataset, cfg.data.split_ratio, cfg.data.batch_size, cf
 
 train_loader, val_loader, test_loader = dataloader.prepare_data()
 
-vision = VisionEncoder(
+encoder = VisionEncoder(
     channels=cfg.model.vision.channels,
     kernels=cfg.model.vision.kernels,
     strides=cfg.model.vision.strides,
@@ -73,18 +74,6 @@ vision = VisionEncoder(
     n_mlp_layers=cfg.model.mlp.n_mlp_layers,
 ).to(device)
 
-"""
-    {    input_shapes=()
-        "observation.image": [3, 240, 320],
-        "observation.joint": [B, Timestep, 6](10, 10, 6),
-        "action": [6]
-    },
-    output_shapes={
-        "action": [6]
-    },
-"""
-
-encoder = vision 
 rssm = RSSM(action_size=6, config=cfg).to(device) 
 
 decoder = VisionDecoder(

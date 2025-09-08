@@ -42,15 +42,26 @@ class RSSM(nn.Module):
             torch.zeros(batch_size, self.config.stochastic_size, device=device)
         )
 
-    def forward(self, embedded_obs, actions):
+    def forward(self, embedded_obs, actions, resets: torch.Tensor | None = None):
 
         batch_size, seq_len, _ = embedded_obs.shape
+
+        if resets is None:
+            reset_masks = torch.ones(batch_size, seq_len, device=embedded_obs.device)
+        else:
+            # resetsがTrue(1)の箇所がエピソードの開始なので、その前の状態をリセットしたい
+            # そのため、マスクは前のタイムステップに適用する
+            reset_masks = ~resets.bool()
         
         deterministic_state, stochastic_state = self.initial_state(batch_size)
         
         det_states, stoch_states, priors, posteriors = [], [], [], []
 
         for t in range(seq_len):
+            if t > 0:
+                mask = reset_masks[:, t - 1].unsqueeze(1)
+                deterministic_state = deterministic_state * mask
+                stochastic_state = stochastic_state * mask
             # 1. 決定的状態を更新
             deterministic_state = self.recurrent_model(
                 torch.cat([stochastic_state, actions[:, t]], dim=-1),
@@ -96,9 +107,18 @@ class RSSM(nn.Module):
         deterministic_state = initial_deterministic
         stochastic_state = initial_stochastic
         
+        imagined_det_states = []
         imagined_stoch_states = []
         
         for t in range(action_sequence.size(1)):
+
+            # # --- ▼ ここからデバッグ用のprint文を追加 ---
+            # print(f"\n--- Dreaming Timestep {t} ---")
+            # print(f"Shape of stochastic_state: {stochastic_state.shape}")
+            # print(f"Shape of action_sequence (full): {action_sequence.shape}")
+            # print(f"Shape of action_sequence[:, t]: {action_sequence[:, t].shape}")
+            # # --- ▲ デバッグ用ここまで ---
+
             deterministic_state = self.recurrent_model(
                 torch.cat([stochastic_state, action_sequence[:, t]], dim=-1),
                 deterministic_state
@@ -108,9 +128,14 @@ class RSSM(nn.Module):
             prior_dist = create_normal_dist(prior_params, min_std=self.rssm_config.transition_model.min_std)
             stochastic_state = prior_dist.rsample()
             
+            imagined_det_states.append(deterministic_state)
             imagined_stoch_states.append(stochastic_state)
             
-        return torch.stack(imagined_stoch_states, dim=1)
+        return (
+            torch.stack(imagined_det_states, dim=1),
+            torch.stack(imagined_stoch_states, dim=1)
+        )
+
 
 def horizontal_forward(network, x, y=None, input_shape=(-1,), output_shape=(-1,)):
     batch_with_horizon_shape = x.shape[: -len(input_shape)]

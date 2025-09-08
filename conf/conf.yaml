@@ -25,7 +25,7 @@ train:
   learning_rate: 0.001
   weight_decay: 1.0e-6
   kl_loss_scale: 10
-  epoch: 1000
+  epoch: 1500
 
 
 logging:
