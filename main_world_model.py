@@ -44,7 +44,7 @@ os.makedirs(f"result/{cfg.wandb.train_name}", exist_ok=True)
 wandb.init(project=cfg.wandb.project_name, config=cfg.wandb.config, name=cfg.wandb.train_name)
 
 
-data_dir = "data_merged1"
+data_dir = "data_merged2"
 
 images = blosc2.load_array(os.path.join(data_dir, "images.blosc2"))
 joint = blosc2.load_array(os.path.join(data_dir, "states.blosc2"))
@@ -65,6 +65,7 @@ dataloader = MyDataloader(dataset, cfg.data.split_ratio, cfg.data.batch_size, cf
 train_loader, val_loader, test_loader = dataloader.prepare_data()
 
 encoder = VisionEncoder(
+    input_size=cfg.model.vision.input_size, 
     channels=cfg.model.vision.channels,
     kernels=cfg.model.vision.kernels,
     strides=cfg.model.vision.strides,
@@ -77,6 +78,7 @@ encoder = VisionEncoder(
 rssm = RSSM(action_size=6, config=cfg).to(device) 
 
 decoder = VisionDecoder(
+    input_size=cfg.model.vision.input_size,
     channels=cfg.model.vision.channels,
     kernels=cfg.model.vision.kernels,
     strides=cfg.model.vision.strides,

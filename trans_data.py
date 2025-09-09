@@ -9,7 +9,7 @@ LEFT_DATA_DIR = "data/left"
 RIGHT_DATA_DIR = "data/right"
 
 # 出力される新しい「フォルダ名」を指定
-OUTPUT_DIR = "data_merged1"
+OUTPUT_DIR = "data_merged2"
 
 # それぞれのデータから取り出すエピソード（まとまり）の数
 NUM_EPISODES_EACH = 40

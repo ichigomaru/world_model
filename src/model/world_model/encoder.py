@@ -32,6 +32,7 @@ def get_conved_size(obs_shape, channels, kernels, strides, paddings):
 class VisionEncoder(nn.Module):
     def __init__(
         self,
+        input_size,  # 画像サイズ (H, W)
         channels,
         kernels,
         strides,
@@ -42,7 +43,7 @@ class VisionEncoder(nn.Module):
         super().__init__()
 
         #画像サイズ
-        obs_size = [48, 64]
+        obs_size = input_size
 
         #エンコーダー
         self.encoder = self._build_conv_layers(

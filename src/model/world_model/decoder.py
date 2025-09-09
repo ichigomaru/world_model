@@ -41,6 +41,7 @@ def calculate_output_padding(h_in, w_in, h_out, w_out, stride, kernel, padding):
 class VisionDecoder(nn.Module):
     def __init__(
         self,
+        input_size,
         channels,
         kernels,
         strides,
@@ -52,7 +53,7 @@ class VisionDecoder(nn.Module):
         super().__init__()
         
         self.encoder_feature_sizes = get_encoder_feature_sizes(
-            [48, 64], channels, kernels, strides, paddings
+            input_size, channels, kernels, strides, paddings
         )
         
         final_h, final_w = self.encoder_feature_sizes[-1]
@@ -109,5 +110,4 @@ class VisionDecoder(nn.Module):
         x = x.view(-1, *self.pre_flatten_shape)
         x = self.decoder(x)
 
-        # assert x.shape[-2:] == (240, 320) # 念のため確認
         return x

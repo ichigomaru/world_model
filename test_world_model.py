@@ -14,6 +14,9 @@ from src.model.world_model.RSSM import RSSM
 from src.model.world_model.decoder import VisionDecoder
 from src.model.world_model.WorldModel import WorldModel
 
+with open("conf/conf.yaml", "r") as yml:
+    cfg = Box(yaml.safe_load(yml))
+
 def tensor_to_pil(tensor):
     img_np = tensor.cpu().numpy()
     img_np = np.transpose(img_np, (1, 2, 0))
@@ -117,8 +120,9 @@ def imagine_future(model, image_sequence, action_sequence):
         print("Decoding and creating comparison frames...")
         latent_states_for_decoder = torch.cat([imagined_det_states, imagined_stoch_states], dim=-1)
         b, t, s = latent_states_for_decoder.shape
+        h, w = cfg.model.vision.input_size 
         imagined_images_tensor = model.vision_decoder(latent_states_for_decoder.reshape(b * t, s))
-        imagined_images_tensor = imagined_images_tensor.reshape(b, t, 3, 48, 64).squeeze(0)
+        imagined_images_tensor = imagined_images_tensor.reshape(b, t, 3, h, w).squeeze(0)
 
         # 5. GIFを作成する (この部分は変更なし)
         # 最初のフレーム

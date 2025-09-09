@@ -1,5 +1,6 @@
 model:
   vision:
+    input_size: [60, 80] 
     channels: [32, 64, 128]
     kernels: [3, 3, 3]
     strides: [2, 2, 2]
@@ -33,7 +34,7 @@ logging:
 
 wandb:
   project_name: 'Kensyu_3_new'
-  train_name: 'World_Model_3'
+  train_name: 'World_Model_4'
   config:
     device: 'cuda:0'
 
